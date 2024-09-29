@@ -5,11 +5,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -18,18 +15,20 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 
+import java.io.IOException;
 import java.util.List;
 
 @Configuration
 public class SecurityConfig {
 
     private final UserDetailsService userDetailsService; // Inject UserDetailsService
+    private final CustomLogoutSuccessHandler customLogoutSuccessHandler; // Inject custom logout success handler
 
-    public SecurityConfig(UserDetailsService userDetailsService) {
+    public SecurityConfig(UserDetailsService userDetailsService, CustomLogoutSuccessHandler customLogoutSuccessHandler) {
         this.userDetailsService = userDetailsService;
+        this.customLogoutSuccessHandler = customLogoutSuccessHandler;
     }
 
     @Bean
@@ -43,10 +42,9 @@ public class SecurityConfig {
                     corsConfig.setAllowedHeaders(List.of("*"));
                     return corsConfig;
                 }))  // Enable CORS
-                .csrf(AbstractHttpConfigurer::disable) // Disable CSRF for simplicity in development
-
+                .csrf(csrf -> csrf.disable()) // Disable CSRF for simplicity in development
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/users/register", "/api/users/login","/").permitAll()  // Public access for register, login
+                        .requestMatchers("/api/users/register", "/api/users/login", "/", "/home", "/error").permitAll()  // Public access for register, login
                         .requestMatchers("/api/users/all").authenticated() // Require authentication for fetching all users
                         .anyRequest().authenticated()  // All other endpoints require authentication
                 )
@@ -60,10 +58,10 @@ public class SecurityConfig {
                         .permitAll()
                 )
                 .logout(logout -> logout
-                        .logoutUrl("/logout")  // Custom logout URL
+                        .logoutUrl("/api/auth/users/logout")  // Custom logout URL
                         .invalidateHttpSession(true)  // Invalidate the session
                         .deleteCookies("JSESSIONID")  // Delete the session cookie (JSESSIONID) on logout
-                        .logoutSuccessUrl("/")  // Redirect to login after logout
+                        .logoutSuccessHandler(customLogoutSuccessHandler)  // Use the custom logout success handler
                         .permitAll()
                 )
                 .exceptionHandling(exception -> exception
@@ -76,14 +74,12 @@ public class SecurityConfig {
         // Add the custom filter to the security chain
         http.addFilterBefore(sessionCookieAuthenticationFilter(http), UsernamePasswordAuthenticationFilter.class);
 
-
         return http.build();
     }
 
     @Bean
     public SessionCookieAuthenticationFilter sessionCookieAuthenticationFilter(HttpSecurity http) throws Exception {
-        SessionCookieAuthenticationFilter filter = new SessionCookieAuthenticationFilter(authManager(http), userDetailsService);
-        return filter; // Return the configured filter
+        return new SessionCookieAuthenticationFilter(authManager(http), userDetailsService);  // Return the configured filter
     }
 
     @Bean
@@ -105,4 +101,6 @@ public class SecurityConfig {
             response.setStatus(HttpServletResponse.SC_OK);
         };
     }
+
+    // You would need to implement CustomLogoutSuccessHandler as a separate component
 }

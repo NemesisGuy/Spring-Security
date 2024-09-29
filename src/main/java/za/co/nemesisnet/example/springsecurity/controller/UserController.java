@@ -86,7 +86,7 @@ public class UserController {
     }
 
 
-    @PostMapping("/logout")
+  /*  @PostMapping("/logout")
     public ResponseEntity<String> logout(HttpServletRequest request, HttpServletResponse response) {
         // Invalidate the session if it exists
         HttpSession session = request.getSession(false);
@@ -106,7 +106,7 @@ public class UserController {
         SecurityContextHolder.clearContext();
 
         return ResponseEntity.ok("User logged out successfully!");
-    }
+    }*/
 
 
     @GetMapping("/all")
