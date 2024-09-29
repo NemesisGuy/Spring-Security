@@ -13,22 +13,22 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 
-import java.io.IOException;
 import java.util.List;
 
 @Configuration
 public class SecurityConfig {
 
-    private final UserDetailsService userDetailsService; // Inject UserDetailsService
-    private final CustomLogoutSuccessHandler customLogoutSuccessHandler; // Inject custom logout success handler
+    private final UserDetailsService userDetailsService;
+    private final CustomLogoutSuccessHandler customLogoutSuccessHandler;
+    private final CustomLoginSuccessHandler customLoginSuccessHandler; // Inject the custom login success handler
 
-    public SecurityConfig(UserDetailsService userDetailsService, CustomLogoutSuccessHandler customLogoutSuccessHandler) {
+    public SecurityConfig(UserDetailsService userDetailsService, CustomLogoutSuccessHandler customLogoutSuccessHandler, CustomLoginSuccessHandler customLoginSuccessHandler) {
         this.userDetailsService = userDetailsService;
         this.customLogoutSuccessHandler = customLogoutSuccessHandler;
+        this.customLoginSuccessHandler = customLoginSuccessHandler;
     }
 
     @Bean
@@ -54,7 +54,8 @@ public class SecurityConfig {
                 )
                 .formLogin(form -> form
                         .loginPage("/login")  // Custom login page if needed
-                        .defaultSuccessUrl("/home", true)  // Redirect on successful login
+                        //.defaultSuccessUrl("/home", true)  // This is removed, as we now use a custom handler
+                        .successHandler(customLoginSuccessHandler)  // Use the custom login success handler
                         .permitAll()
                 )
                 .logout(logout -> logout
@@ -92,15 +93,4 @@ public class SecurityConfig {
         AuthenticationManagerBuilder authenticationManagerBuilder = http.getSharedObject(AuthenticationManagerBuilder.class);
         return authenticationManagerBuilder.build();
     }
-
-    @Bean
-    public AuthenticationSuccessHandler authenticationSuccessHandler() {
-        return (request, response, authentication) -> {
-            System.out.println("User logged in: " + authentication.getName());
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            response.setStatus(HttpServletResponse.SC_OK);
-        };
-    }
-
-    // You would need to implement CustomLogoutSuccessHandler as a separate component
 }

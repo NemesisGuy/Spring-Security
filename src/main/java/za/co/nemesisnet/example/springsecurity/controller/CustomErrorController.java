@@ -14,6 +14,10 @@ public class CustomErrorController implements ErrorController {
     @RequestMapping("/error")
     public ResponseEntity<?> handleError(HttpServletRequest request) {
         Integer statusCode = (Integer) request.getAttribute("javax.servlet.error.status_code");
+        // Default status code in case it's null
+        if (statusCode == null) {
+            statusCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
+        }
         String errorMessage = "Unknown error";
 
         if (statusCode == HttpStatus.NOT_FOUND.value()) {
